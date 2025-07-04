@@ -9,8 +9,9 @@ class Homepage extends StatefulWidget {
   @override
   State<Homepage> createState() => _HomepageState();
 }
-class _HomepageState extends State<Homepage> {
-  // Please ensure you have imported the required packages for speechToText, flutterTts, and GoogleTranslator.
+
+class _HomepageState extends State<Homepage>
+    with SingleTickerProviderStateMixin {
   final SpeechToText speech = SpeechToText();
   final FlutterTts tts = FlutterTts();
   final GoogleTranslator translator = GoogleTranslator();
@@ -21,6 +22,8 @@ class _HomepageState extends State<Homepage> {
   String sourceLang = 'en';
   String targetLang = 'hi';
 
+  late AnimationController _micAnimationController;
+
   final Map<String, String> languageMap = {
     'English': 'en',
     'Hindi': 'hi',
@@ -29,10 +32,32 @@ class _HomepageState extends State<Homepage> {
     'Spanish': 'es',
   };
 
+  @override
+  void initState() {
+    super.initState();
+    _micAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+      lowerBound: 0.8,
+      upperBound: 1.2,
+    )..repeat(reverse: true);
+  }
+
   Future<void> _startListening() async {
+    if (isListening) {
+      await speech.stop();
+      setState(() => isListening = false);
+      return;
+    }
+
     bool available = await speech.initialize();
     if (available) {
-      setState(() => isListening = true);
+      setState(() {
+        isListening = true;
+        recognizedText = '';
+        translatedText = '';
+      });
+
       speech.listen(
         localeId: sourceLang,
         onResult: (result) async {
@@ -40,6 +65,7 @@ class _HomepageState extends State<Homepage> {
           setState(() {});
           if (recognizedText.isNotEmpty) {
             await translateAndSpeak(recognizedText);
+            setState(() => isListening = false);
           }
         },
       );
@@ -54,48 +80,168 @@ class _HomepageState extends State<Homepage> {
     setState(() {});
   }
 
+  void _clearTexts() {
+    setState(() {
+      recognizedText = '';
+      translatedText = '';
+    });
+  }
+
+  void _swapLanguages() {
+    setState(() {
+      String temp = sourceLang;
+      sourceLang = targetLang;
+      targetLang = temp;
+    });
+  }
+
   @override
   void dispose() {
     speech.stop();
     tts.stop();
+    _micAnimationController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF0F4F8),
       appBar: AppBar(
-        title: const Text('Livetranslator'),
+        title: const Text('🎙️ Live Translator'),
+        backgroundColor: Colors.blueAccent,
+        elevation: 2,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            DropdownButtonFormField<String>(
-              decoration: const InputDecoration(labelText: 'From Language'),
-              value: languageMap.entries.firstWhere((e) => e.value == sourceLang).key,
-              items: languageMap.keys.map((lang) {
-                return DropdownMenuItem(value: lang, child: Text(lang));
-              }).toList(),
-              onChanged: (value) => setState(() => sourceLang = languageMap[value]!),
+            // Language Dropdowns + Swap
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    decoration: const InputDecoration(
+                      labelText: 'From Language',
+                      border: OutlineInputBorder(),
+                    ),
+                    value: languageMap.entries
+                        .firstWhere((e) => e.value == sourceLang)
+                        .key,
+                    items: languageMap.keys.map((lang) {
+                      return DropdownMenuItem(value: lang, child: Text(lang));
+                    }).toList(),
+                    onChanged: (value) =>
+                        setState(() => sourceLang = languageMap[value]!),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.swap_horiz, size: 28),
+                  onPressed: _swapLanguages,
+                ),
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    decoration: const InputDecoration(
+                      labelText: 'To Language',
+                      border: OutlineInputBorder(),
+                    ),
+                    value: languageMap.entries
+                        .firstWhere((e) => e.value == targetLang)
+                        .key,
+                    items: languageMap.keys.map((lang) {
+                      return DropdownMenuItem(value: lang, child: Text(lang));
+                    }).toList(),
+                    onChanged: (value) =>
+                        setState(() => targetLang = languageMap[value]!),
+                  ),
+                ),
+              ],
             ),
-            DropdownButtonFormField<String>(
-              decoration: const InputDecoration(labelText: 'To Language'),
-              value: languageMap.entries.firstWhere((e) => e.value == targetLang).key,
-              items: languageMap.keys.map((lang) {
-                return DropdownMenuItem(value: lang, child: Text(lang));
-              }).toList(),
-              onChanged: (value) => setState(() => targetLang = languageMap[value]!),
+
+            const SizedBox(height: 30),
+
+            // Microphone Button
+            GestureDetector(
+              onTap: _startListening,
+              child: ScaleTransition(
+                scale: _micAnimationController,
+                child: CircleAvatar(
+                  radius: 40,
+                  backgroundColor: isListening
+                      ? Colors.redAccent
+                      : Colors.blueAccent,
+                  child: Icon(
+                    isListening ? Icons.mic : Icons.mic_none,
+                    color: Colors.white,
+                    size: 40,
+                  ),
+                ),
+              ),
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _startListening,
-              child: Text(isListening ? "Listening..." : "Start Speaking"),
-            ),
-            const SizedBox(height: 20),
-            Text("You said: $recognizedText"),
             const SizedBox(height: 10),
-            Text("Translated: $translatedText"),
+            Text(
+              isListening ? "Listening..." : "Tap mic to start speaking",
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Clear Button
+            ElevatedButton.icon(
+              onPressed: _clearTexts,
+              icon: const Icon(Icons.clear),
+              label: const Text("Clear All"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 30),
+
+            // Output Display
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(color: Colors.blueAccent),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "You said:",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(recognizedText, style: const TextStyle(fontSize: 16)),
+                  const SizedBox(height: 15),
+                  Text(
+                    "Translation:",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    translatedText,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),

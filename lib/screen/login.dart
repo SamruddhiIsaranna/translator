@@ -1,69 +1,76 @@
 import 'package:flutter/material.dart';
-import 'homepage.dart'; // Import the homepage widget
+import 'homepage.dart';
 
-class loginpage extends StatelessWidget{
- final TextEditingController emailcotroller = TextEditingController(); 
- final TextEditingController passwordcotroller = TextEditingController(); 
- loginpage({super.key});
+class StartPage extends StatefulWidget {
+  const StartPage({super.key});
+
+  @override
+  State<StartPage> createState() => _StartPageState();
+}
+
+class _StartPageState extends State<StartPage>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..repeat(reverse: true);
+    _animation = Tween<double>(
+      begin: 0.95,
+      end: 1.05,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Login Page'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      backgroundColor: Colors.white,
+      body: Center(
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            TextField(
-              controller: emailcotroller,
-              decoration: InputDecoration(
-                labelText: 'Email',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.email),
-              ),
-              keyboardType: TextInputType.emailAddress,
-
-            ),
+            Image.asset('assets/logo.png', width: 150, height: 150),
             const SizedBox(height: 20),
 
-            TextField(
-              controller: passwordcotroller,
-              decoration: InputDecoration(
-                labelText: 'Password',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.lock),
-              ),
-              obscureText: true,
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                final email = emailcotroller.text;
-                final password = passwordcotroller.text;
-                print('login with $email, $password');
-                if (email.isNotEmpty && password.isNotEmpty){
-                  Navigator.push(context,MaterialPageRoute(builder: (context) => Homepage()),
-                    );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Please enter both email and password'),
-                      duration: Duration(seconds: 2),
-                    ),
+            ScaleTransition(
+              scale: _animation,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 35,
+                    vertical: 16,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(40),
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => Homepage()),
                   );
-                  return;
-                }
-                // Handle login logic here
-              },
-              style: ElevatedButton.styleFrom(
-                minimumSize: Size(double.infinity, 50), // Full width button
-                backgroundColor: Colors.blue,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8.0),
+                },
+                child: const Text(
+                  "Start",
+                  style: TextStyle(
+                    fontSize: 20,
+                    color: Colors.blue,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'RobotoMono',
+                  ),
                 ),
               ),
-              child: Text('Login'),
             ),
           ],
         ),
