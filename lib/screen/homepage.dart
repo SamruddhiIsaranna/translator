@@ -215,7 +215,7 @@ class _HomepageState extends State<Homepage>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "You said:",
+                    "Listening...:",
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.grey[600],
@@ -225,7 +225,7 @@ class _HomepageState extends State<Homepage>
                   Text(recognizedText, style: const TextStyle(fontSize: 16)),
                   const SizedBox(height: 15),
                   Text(
-                    "Translation:",
+                    "Translating...:",
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.grey[600],
